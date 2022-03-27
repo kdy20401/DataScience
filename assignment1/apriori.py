@@ -13,8 +13,8 @@ input_file = sys.argv[2]
 output_file = sys.argv[3]
 
 database = []
-total_candidate = []
-deleted_candidate = []
+frequent_item = []
+infrequent_item = []
 candidate_support = {}
 frequent_item_support = {}
 
@@ -40,8 +40,8 @@ for item in candidate_support.keys():
             candidate_support[item] += 1
 for item in candidate_support.keys():
     if round(decimal.Decimal(100 * candidate_support[item] / db_size), 2) < min_support:
-        deleted_candidate.append(set(item))
-for item in deleted_candidate:
+        infrequent_item.append(set(item))
+for item in infrequent_item:
     del candidate_support[tuple(item)]
 
 for candi, sup in candidate_support.items():
@@ -54,22 +54,22 @@ while len(candidate_support.keys()) > 0:
     next_candidate = []
     for i in combinations(candidate_support.keys(), 2):
         c = set(i[0]).union(set(i[1]))
-        # do not include candidate which has been generated at previous iterations
-        if c not in total_candidate:
-            total_candidate.append(c)
+        # do not include candidate which has already been determined to frequent item at previous iterations
+        if c not in frequent_item:
+            frequent_item.append(c)
             # make candidates independent
             if c not in next_candidate:
                 next_candidate.append(c)
     
-    # 2. candidate pruning: remove candidate which has a not frequent pattern subset
-    candidate_with_infrequent_subset = []
+    # 2. candidate pruning: remove candidate which contains an infreqneut item
+    candidate_with_infrequent_item = []
     for c in next_candidate:
         is_subset_frequent = True
-        for d in deleted_candidate:
+        for d in infrequent_item:
             if c & d == d:
-                candidate_with_infrequent_subset.append(c)
+                candidate_with_infrequent_item.append(c)
                 break
-    for c in candidate_with_infrequent_subset:
+    for c in candidate_with_infrequent_item:
         next_candidate.remove(c)
     for c in next_candidate:
         next_candidate_support[tuple(c)] = 0
@@ -85,9 +85,14 @@ while len(candidate_support.keys()) > 0:
         if support < min_support:
             candidate_under_min_support.append(c)
     for c in candidate_under_min_support:
-        deleted_candidate.append(c)
         del next_candidate_support[tuple(c)]
     
+    # keep frequent item set clean
+    for c in candidate_with_infrequent_item:
+        frequent_item.remove(c)
+    for c in candidate_under_min_support:
+        frequent_item.remove(c)
+
     for k, v in candidate_support.items():
         frequent_item_support[k] = v
     candidate_support = next_candidate_support
