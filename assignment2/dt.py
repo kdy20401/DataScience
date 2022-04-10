@@ -9,16 +9,15 @@ class Node:
     
     Instance Variables:
         isLeaf(bool): indicate whether a node is internal or leaf
-        label(str): the label value in leaf node. internal node doesn't have label.
-        splitting_attribute(str): the attribute which split the current node (ex, 'age')
-        splitting_criteria(numpy.ndarray): attribute's values. (ex, ['<=30', '30...40'])
-        each criterion indicates the path to the child nodes. acts like a pointer to the child nodes
-        children(dict): key is criterion and value is Node.
+        label(str): the label value in leaf node. internal node doesn't have a label
+        splitting_attribute(str): the attribute which splits the current node (ex, 'age')
+        children(dict): key is a splitting criterion and value is a corresponding child node.
+        it saves mappings of splitting value and child node  
     
     Instance Method:
-        set_splitting_criteria: make branch(pointer) to child nodes using criteria
+        set_splitting_criteria: make branches(pointers) to child nodes using criteria
         check: decide which branch to follow and return corresponding child node.
-        when reached to leaf node, return label.
+        when reached to the leaf node, return label.
     '''
 
     def __init__(self, isLeaf=False, label=None):
@@ -28,12 +27,11 @@ class Node:
     def is_leaf(self):
         return self.isLeaf
 
-    def attach_sibling(self, criterion, node):
+    def attach_child(self, criterion, node):
         self.children[criterion] = node
     
     def set_splitting_attribute(self, attribute, criteria):
         self.splitting_attribute = attribute
-        self.splitting_criteria = criteria
         self.children = {c: None for c in criteria}
 
     def set_label(self, label):
@@ -56,12 +54,12 @@ def ID3(data, attribute, label_column):
     Calculate sum of the entropy of nodes splitted by the attribute.
     
     Parameters:
-        data(pandas.Dataframe): tablular data
+        data(pandas.Dataframe): a tablular data
         label_column(str): label attribute
         attribute(str): target attribute to split data
     '''
 
-    delta = 1e-7 # to avoid Nan
+    delta = 1e-7 # to avoid NaN
     table = data.groupby([attribute, label_column])[attribute].count().unstack().fillna(0).to_numpy()
     coeff = np.sum(table, axis=1) / np.sum(table)
     p = table / np.sum(table, axis=1).reshape(-1, 1)
@@ -75,9 +73,9 @@ def find_the_best_splitting_attribute(data, attribute_list, label_column, attrib
     Find the optimal splitting attribute and return the attribute criteria.
     
     Parameters:
-        data(pandas.Dataframe): tablular data
-        attribute_list(dict): key is attribute, value is list of unique values. this parameter
-        saves the kinds of value the specific attribute contains.
+        data(pandas.Dataframe): a tablular data
+        attribute_list(dict): key is attribute, value is list of unique values.
+        this parameter saves the unique values the specific attribute contains.
         label_column(str): label attribute
         attribute_selection_method(function): function used to calculate impurity. (in this code, ID3)
     '''
@@ -98,9 +96,9 @@ def generate_decision_tree(data, attribute_list, label_column, attribute_selecti
     Generate a decision tree based on the data using an attribute selection method.
     
     Parameters:
-        data(pandas.Dataframe): tablular data
+        data(pandas.Dataframe): a tablular data
         attribute_list(dict): key is attribute, value is list of unique values.
-        this parameter is saving the kinds of value the specific attribute contains.
+        this parameter saves the unique values the specific attribute contains.
         label_column(str): label attribute
         attribute_selection_method(function): function used to calculate impurity. (in this code, ID3)
     '''
@@ -120,7 +118,7 @@ def generate_decision_tree(data, attribute_list, label_column, attribute_selecti
         node.set_label(label)
         return node
 
-    # find the best attribute to split node
+    # find the best attribute to split node and make branches to child nodes
     splitting_attribute = find_the_best_splitting_attribute(data, attribute_list, label_column, attribute_selection_method)
     node.set_splitting_attribute(splitting_attribute, attribute_list[splitting_attribute])
 
@@ -136,18 +134,19 @@ def generate_decision_tree(data, attribute_list, label_column, attribute_selecti
         if sub_data.shape[0] == 0:
             label = data[label_column].value_counts().index[0] # majority voting 
             child_node = Node(isLeaf=True, label=label)
-            node.attach_sibling(criterion, child_node)
+            node.attach_child(criterion, child_node)
         else:
             # recursive call starts
-            # note: pass a copy of dictionary to the argument 
-            node.attach_sibling(criterion, generate_decision_tree(sub_data, attribute_list.copy(), label_column, attribute_selection_method))
+            # note: pass a copy of dictionary to the argument
+            child_node = generate_decision_tree(sub_data, attribute_list.copy(), label_column, attribute_selection_method)
+            node.attach_child(criterion, child_node)
 
     return node
 
 
 def predict_label(decision_tree, data):
     '''
-    Predict data's label using decision tree.
+    Predict data's label using a decision tree.
     
     Parameters:
         decision_tree(Node): root node of decision tree
