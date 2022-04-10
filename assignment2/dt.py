@@ -189,5 +189,6 @@ def main():
     test_data[label_column] = predictions
     test_data.to_csv(output_file, index=False, sep='\t')
 
+
 if __name__ == '__main__':
     main()
