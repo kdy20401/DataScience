@@ -186,7 +186,7 @@ def main():
         label = predict_label(dt, row)
         predictions.append(label)
     test_data[label_column] = predictions
-    test_data.to_csv(output_file, index=False, sep='\t')
+    test_data.to_csv(f'./result/{output_file}', index=False, sep='\t')
 
 
 if __name__ == '__main__':
